@@ -20,5 +20,5 @@ class Events:
                     headers={"Authorization": "Bearer " + token, "content-type": "application/json"},
                     data={"customerName": name, "customerEmail": email, "customerPhone": phone, "eventId": id, "quantity": quantity}
                 )
-                booking_reference = response_booking.json()["data"].get("bookingRef")
+                booking_reference = response_booking.json().get("bookingRef")
                 return booking_reference
