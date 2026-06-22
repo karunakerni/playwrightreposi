@@ -1,0 +1,73 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: >
+          pytest test/
+          --override-ini="addopts=--tracing=on"
+          --html=report.html
+          --self-contained-html
+          -v
+        continue-on-error: true
+
+      - name: Upload HTML report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report
+          path: report.html
+          retention-days: 14
+
+      - name: Send HTML report via email
+        uses: dawidd6/action-send-mail@v3
+        if: always()
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "Playwright Test Report — Run #${{ github.run_number }} (${{ job.status }})"
+          to: karuna.kerni@sixsentix.com
+          from: Playwright CI <${{ secrets.MAIL_USERNAME }}>
+          body: |
+            Hi Karuna,
+
+            Playwright test run #${{ github.run_number }} has completed with status: ${{ job.status }}.
+
+            Branch  : ${{ github.ref_name }}
+            Commit  : ${{ github.sha }}
+            Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            The full HTML report is attached to this email.
+
+            Regards,
+            GitHub Actions CI
+          attachments: report.html
